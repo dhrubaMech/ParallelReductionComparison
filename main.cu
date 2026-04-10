@@ -28,7 +28,10 @@ int main(){
 
     const bool reduce0 = false ;
     const bool reduce1 = false ;
-    const bool reduce2 = true ;
+    const bool reduce2 = false ;
+    const bool reduce3 = false ;
+    const bool reduce4 = false ;
+    const bool reduce5 = true ;
 
     float *A = new float[N];
     fillRandomArray(A,N);
@@ -80,7 +83,7 @@ int main(){
     if (reduce1){
         ofstream file("KernelTimings/reduce1_N"+to_string(N)+"_repeat"+to_string(repeat)+"_NT"+to_string(SM)+".csv");
         for (int r = 0 ; r < repeat ; r++){
-            const int NT = 128;
+            const int NT = SM;
             const int NB = (N + NT - 1)/NT;
             // printf("NT %d | NB %d\n",NT,NB);
 
@@ -112,7 +115,7 @@ int main(){
     if (reduce2){
         ofstream file("KernelTimings/reduce2_N"+to_string(N)+"_repeat"+to_string(repeat)+"_NT"+to_string(SM)+".csv");
         for (int r = 0 ; r < repeat ; r++){
-            const int NT = 128;
+            const int NT = SM;
             const int NB = (N + NT - 1)/NT;
             // printf("NT %d | NB %d\n",NT,NB);
 
@@ -140,6 +143,110 @@ int main(){
         }
         file.close();
     }
+
+    if (reduce3){
+        ofstream file("KernelTimings/reduce3_N"+to_string(N)+"_repeat"+to_string(repeat)+"_NT"+to_string(SM)+".csv");
+        for (int r = 0 ; r < repeat ; r++){
+            const int NT = SM;
+            const int NB = (N + 2*NT - 1)/(2*NT);  // reducing the number of blocks launched
+            // printf("NT %d | NB %d\n",NT,NB);
+
+            float *dsumm;
+            cudaMalloc((void**) &dsumm, NB * sizeof(float));
+            cudaMemset(dsumm, 0.0f, NB * sizeof(float));
+
+            auto start = std::chrono::steady_clock::now();
+            gpuSUMReductionFirstAdd<<<NB,NT,NT*sizeof(float)>>>(dA,dsumm,N);
+            cudaDeviceSynchronize();
+            auto  end = std::chrono::steady_clock::now();
+
+            std::chrono::duration<double, std::micro> Tspan = end - start;
+            printf("Time taken [First Add] ~ %f microsecs\n",Tspan.count());
+            file << Tspan.count() << ((r != repeat-1) ? "," : "");
+
+            float hsumm[NB] = {0.0f};
+            cudaMemcpy(hsumm, dsumm, NB * sizeof(float), cudaMemcpyDeviceToHost); cudaFree(dsumm);
+
+            float res = 0.0f;
+            for (int i = 0 ; i < NB ; i++){
+                res += hsumm[i];
+            }
+            printf("Error [red3] : %f | [%f]\n\n",fabs(res-summ),res);
+        }
+        file.close();
+    }
+
+
+    if (reduce4){
+        ofstream file("KernelTimings/reduce4_N"+to_string(N)+"_repeat"+to_string(repeat)+"_NT"+to_string(SM)+".csv");
+        for (int r = 0 ; r < repeat ; r++){
+            const int NT = SM;
+            const int NB = (N + (2*NT) - 1)/(2*NT);  // reducing the number of blocks launched
+            // printf("NT %d | NB %d\n",NT,NB);
+
+            float *dsumm;
+            cudaMalloc((void**) &dsumm, NB * sizeof(float));
+            cudaMemset(dsumm, 0.0f, NB * sizeof(float));
+
+            auto start = std::chrono::steady_clock::now();
+            gpuSUMReductionWarpReduce<<<NB,NT,NT*sizeof(float)>>>(dA,dsumm,N);
+            cudaDeviceSynchronize();
+            auto  end = std::chrono::steady_clock::now();
+
+            std::chrono::duration<double, std::micro> Tspan = end - start;
+            printf("Time taken [Warp reduce] ~ %f microsecs\n",Tspan.count());
+            file << Tspan.count() << ((r != repeat-1) ? "," : "");
+
+            float hsumm[NB] = {0.0f};
+            cudaMemcpy(hsumm, dsumm, NB * sizeof(float), cudaMemcpyDeviceToHost); cudaFree(dsumm);
+
+            float res = 0.0f;
+            for (int i = 0 ; i < NB ; i++){
+                res += hsumm[i];
+            }
+            printf("Error [red4] : %f | [%f]\n\n",fabs(res-summ),res);
+        }
+        file.close();
+    }
+
+
+    if (reduce5){
+        ofstream file("KernelTimings/reduce5_N"+to_string(N)+"_repeat"+to_string(repeat)+"_NT"+to_string(SM)+".csv");
+        for (int r = 0 ; r < repeat ; r++){
+            const int NT = SM;
+            const int NB = (N + (2*NT) - 1)/(2*NT);  // reducing the number of blocks launched
+            // printf("NT %d | NB %d\n",NT,NB);
+
+            float *dsumm;
+            cudaMalloc((void**) &dsumm, NB * sizeof(float));
+            cudaMemset(dsumm, 0.0f, NB * sizeof(float));
+
+	    auto start = std::chrono::steady_clock::now();
+            gpuSUMReductionCompleteUnroll<NT><<<NB,NT,NT*sizeof(float)>>>(dA,dsumm,N);
+            cudaDeviceSynchronize();
+            auto  end = std::chrono::steady_clock::now();
+
+            std::chrono::duration<double, std::micro> Tspan = end - start;
+            printf("Time taken [Complete unroll] ~ %f microsecs\n",Tspan.count());
+            file << Tspan.count() << ((r != repeat-1) ? "," : "");
+
+            float hsumm[NB] = {0.0f};
+            cudaMemcpy(hsumm, dsumm, NB * sizeof(float), cudaMemcpyDeviceToHost); cudaFree(dsumm);
+
+            float res = 0.0f;
+            for (int i = 0 ; i < NB ; i++){
+                res += hsumm[i];
+            }
+            printf("Error [red5] : %f | [%f]\n\n",fabs(res-summ),res);
+        }
+        file.close();
+    }
+
+
+
+
+
+
 
 
     delete[] A;
