@@ -62,7 +62,84 @@ def plot():
     plt.savefig("RedPerform.png",dpi=300)
     plt.close()
 
+def plot1MIL():
+    NT = 256
+    input = 1000000
+    kernels = ["Interleaved\nV1", "Interleaved\nV2", "Sequential\nAddressing", 
+               "First Add\nDuring Load", "Unroll Last\nWarp", "Complete\nUnroll"]
+
+    Ts = np.zeros(len(kernels))
+    for i in range(len(kernels)):
+        data = np.loadtxt(f"KernelTimings/reduce{i}_N{input}_repeat11_NT{NT}.csv",delimiter=",")
+        Ts[i] = np.mean(data[1:])
+    
+    # colors = plt.cm.cool(np.linspace(0,1,len(kernels)))
+    colors = plt.cm.cool(np.linspace(0,1,len(kernels)))
+    plt.figure(figsize=(7,5))
+
+    plt.bar(np.arange(len(kernels)),Ts, width=1, ec="w", lw=3, color=colors,alpha=0.99)
+
+    for i in range(len(kernels)):
+        if i == 0:
+            plt.text(i,Ts[i]+1,f"Naive",fontsize=tickFontsize, ha="center")
+        else:
+            plt.text(i,Ts[i]+1,f"{np.round(Ts[0]/Ts[i],2)}x",fontsize=tickFontsize, ha="center")
+
+    plt.xlabel("KERNELS",fontsize=labelFontsize,labelpad=10)
+    plt.ylabel("t (microsecs)",fontsize=labelFontsize)
+
+    plt.ylim([0,60])
+    plt.xticks(np.arange(len(kernels)),kernels)
+    plt.tick_params(axis="y",labelsize=tickFontsize)
+    plt.tick_params(axis="x",labelsize=tickFontsize*0.75)
+
+    plt.tight_layout()
+    plt.savefig("compareKernelsN1Mil.png",dpi=300)
+    plt.close()
+
+
+def plotThreadLaunched():
+    NT = 256
+    input = 1000000
+    kernels = ["Interleaved\nV1", "Interleaved\nV2", "Sequential\nAddressing", 
+               "First Add\nDuring Load", "Unroll Last\nWarp", "Complete\nUnroll"]
+    Threads = np.array([64,128,256,512])
+
+    Ts = np.zeros((len(kernels),len(Threads)))
+    for i in range(len(kernels)):
+        for t in range(len(Threads)):
+            data = np.loadtxt(f"KernelTimings/reduce{i}_N{input}_repeat25_NT{Threads[t]}.csv",delimiter=",")
+            Ts[i,t] = np.mean(data[1:])
+    
+    # colors = plt.cm.cool(np.linspace(0,1,len(kernels)))
+    colors = plt.cm.cool(np.linspace(0,1,len(kernels)))
+    plt.figure(figsize=(5,5))
+
+    xx,yy = np.meshgrid(Threads,np.arange(len(kernels)))
+    plt.imshow(Ts,cmap="cool_r",origin="lower")
+
+    for i in range(len(kernels)):
+        for j in range(len(Threads)):
+            plt.text(j,i,np.round(Ts[i,j],2),ha="center",c="w")
+
+    plt.xlabel("THREADS",fontsize=labelFontsize,labelpad=10)
+    plt.ylabel("KERNELS",fontsize=labelFontsize)
+
+    plt.xticks(np.arange(len(Threads)),Threads)
+    plt.yticks(np.arange(len(kernels)),kernels[:])
+    #plt.tick_params(axis="y",labelsize=tickFontsize)
+    #plt.tick_params(axis="x",labelsize=tickFontsize*0.65)
+
+    plt.tight_layout()
+    plt.savefig("EffectThreads.png",dpi=300)
+    plt.close()
+
+
 
 if __name__ == "__main__":
 
-    plot()
+    # plot()
+
+    plot1MIL()
+
+    plotThreadLaunched()
