@@ -8,4 +8,13 @@ __global__ void gpuSUMReductionWithoutDivergence(const float *dA, float *dsumm, 
 
 __global__ void gpuSUMReductionSeqAddress(const float *dA, float *dsumm, const int N);
 
+__global__ void gpuSUMReductionFirstAdd(const float *dA, float *dsumm, const int N);
+
+__global__ void gpuSUMReductionWarpReduce(const float *dA, float *dsumm, const int N);
+
+
+template <const int blockSize>
+__global__ void gpuSUMReductionCompleteUnroll(const float*, float*, const int);
+
+
 #endif

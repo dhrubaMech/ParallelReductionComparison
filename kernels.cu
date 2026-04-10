@@ -72,3 +72,131 @@ __global__ void gpuSUMReductionSeqAddress(const float *dA, float *dsumm, const i
 
 }
 
+
+__global__ void gpuSUMReductionFirstAdd(const float *dA, float *dsumm, const int N){
+
+    extern __shared__ float dAshared[];
+
+    const int tid = threadIdx.x;
+    const int globalIdx = (2*blockDim.x) * blockIdx.x + tid;
+
+    // dAshared[tid] = globalIdx+blockDim.x < N ? dA[globalIdx] + dA[globalIdx+blockDim.x] : 0.0f;
+    dAshared[tid]  = globalIdx < N ? dA[globalIdx] : 0.0f;
+    dAshared[tid] += globalIdx+blockDim.x < N ? dA[globalIdx+blockDim.x] : 0.0f;
+    __syncthreads();
+
+    for (int s = blockDim.x/2 ; s > 0 ; s /= 2){
+        if (tid < s){
+            dAshared[tid] += dAshared[tid+s];
+        }
+        __syncthreads();
+    }
+    if (tid == 0){
+        dsumm[blockIdx.x] = dAshared[0];
+    }
+
+}
+
+__device__ void warpReduce32(volatile float *dAshared, int tid){
+    dAshared[tid] += dAshared[tid + 32];
+    dAshared[tid] += dAshared[tid + 16];
+    dAshared[tid] += dAshared[tid + 8];
+    dAshared[tid] += dAshared[tid + 4];
+    dAshared[tid] += dAshared[tid + 2];
+    dAshared[tid] += dAshared[tid + 1];
+}
+
+__global__ void gpuSUMReductionWarpReduce(const float *dA, float *dsumm, const int N){
+
+    extern __shared__ float dAshared[];
+
+    const int tid = threadIdx.x;
+    const int globalIdx = (2*blockDim.x) * blockIdx.x + tid;
+
+    // dAshared[tid] = globalIdx+blockDim.x < N ? dA[globalIdx] + dA[globalIdx+blockDim.x] : 0.0f;
+    dAshared[tid]  = globalIdx < N ? dA[globalIdx] : 0.0f;
+    dAshared[tid] += globalIdx+blockDim.x < N ? dA[globalIdx+blockDim.x] : 0.0f;
+    __syncthreads();
+
+    for (int s = blockDim.x/2 ; s > 32 ; s /= 2){
+        if (tid < s){
+            dAshared[tid] += dAshared[tid+s];
+        }
+        __syncthreads();
+    }
+
+    // manually doing loop unroll
+    if (tid < 32){
+       warpReduce32(dAshared,tid);
+    }
+
+    if (tid == 0){
+        dsumm[blockIdx.x] = dAshared[0];
+    }
+
+}
+
+template <const int blockSize>
+__device__ void warpReduce(volatile float *dAshared, int tid){
+    if (blockSize >= 64) dAshared[tid] += dAshared[tid + 32];
+    if (blockSize >= 32) dAshared[tid] += dAshared[tid + 16];
+    if (blockSize >= 16) dAshared[tid] += dAshared[tid + 8];
+    if (blockSize >=  8) dAshared[tid] += dAshared[tid + 4];
+    if (blockSize >=  4) dAshared[tid] += dAshared[tid + 2];
+    if (blockSize >=  2) dAshared[tid] += dAshared[tid + 1];
+}
+
+template <const int blockSize>
+__global__ void gpuSUMReductionCompleteUnroll(const float *dA, float *dsumm, const int N){
+
+    extern __shared__ float dAshared[];
+
+    const int tid = threadIdx.x;
+    const int globalIdx = (2*blockDim.x) * blockIdx.x + tid;
+
+    dAshared[tid]  = globalIdx < N ? dA[globalIdx] : 0.0f;
+    dAshared[tid] += globalIdx+blockDim.x < N ? dA[globalIdx+blockDim.x] : 0.0f;
+    // dAshared[tid] = globalIdx+blockDim.x < N ? dA[globalIdx] + dA[globalIdx+blockDim.x] : 0.0f;
+    __syncthreads();
+    
+    // manually doing loop unroll
+    if (blockSize >= 512){
+        if (tid < 256){
+            dAshared[tid] += dAshared[tid + 256];
+	}
+	__syncthreads();
+    }
+    if (blockSize >= 256){
+        if (tid < 128){
+            dAshared[tid] += dAshared[tid + 128];
+        }
+	__syncthreads();
+    }
+    if (blockSize >= 128){
+        if (tid < 64){
+            dAshared[tid] += dAshared[tid + 64];
+        }
+	__syncthreads();
+    }
+    
+
+    if (tid < 32){
+       warpReduce<blockSize>(dAshared,tid);
+    }
+
+
+    if (tid == 0){
+        dsumm[blockIdx.x] = dAshared[0];
+    }
+
+}
+
+template __global__ void gpuSUMReductionCompleteUnroll<16>(const float*, float*, const int);
+template __global__ void gpuSUMReductionCompleteUnroll<32>(const float*, float*, const int);
+template __global__ void gpuSUMReductionCompleteUnroll<64>(const float*, float*, const int);
+template __global__ void gpuSUMReductionCompleteUnroll<128>(const float*, float*, const int);
+template __global__ void gpuSUMReductionCompleteUnroll<256>(const float*, float*, const int);
+template __global__ void gpuSUMReductionCompleteUnroll<512>(const float*, float*, const int);
+
+
+
