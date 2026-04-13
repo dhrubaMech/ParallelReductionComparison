@@ -20,6 +20,7 @@ using namespace std;
 }
 
 #define SM 256
+#define WPT 4
 
 int main(){
     
@@ -31,7 +32,8 @@ int main(){
     const bool reduce2 = false ;
     const bool reduce3 = false ;
     const bool reduce4 = false ;
-    const bool reduce5 = true ;
+    const bool reduce5 = false ;
+    const bool reduce6 = true ;
 
     float *A = new float[N];
     fillRandomArray(A,N);
@@ -242,7 +244,39 @@ int main(){
         file.close();
     }
 
+    
+    if (reduce6){
+        // ofstream file("KernelTimings/reduce6_N"+to_string(N)+"_repeat"+to_string(repeat)+"_NT"+to_string(SM)+".csv");
+        ofstream file("KernelTimings/reduce6_N"+to_string(N)+"_repeat"+to_string(repeat)+"_NT"+to_string(SM)+"_WPT"+to_string(WPT)+".csv");
+        for (int r = 0 ; r < repeat ; r++){
+            const int NT = SM;
+            const int NB = ((N + (2*NT) - 1)/(2*NT))/WPT;  // reducing the number of blocks launched
+            // printf("NT %d | NB %d\n",NT,NB);
 
+            float *dsumm;
+            cudaMalloc((void**) &dsumm, NB * sizeof(float));
+            cudaMemset(dsumm, 0.0f, NB * sizeof(float));
+
+            auto start = std::chrono::steady_clock::now();
+            gpuSUMReductionMultiAddPerThread<NT><<<NB,NT,NT*sizeof(float)>>>(dA,dsumm,N);
+            cudaDeviceSynchronize();
+            auto  end = std::chrono::steady_clock::now();
+
+            std::chrono::duration<double, std::micro> Tspan = end - start;
+            printf("Time taken [Multi Add/Thread] ~ %f microsecs\n",Tspan.count());
+            file << Tspan.count() << ((r != repeat-1) ? "," : "");
+
+            float hsumm[NB] = {0.0f};
+            cudaMemcpy(hsumm, dsumm, NB * sizeof(float), cudaMemcpyDeviceToHost); cudaFree(dsumm);
+
+            float res = 0.0f;
+            for (int i = 0 ; i < NB ; i++){
+                res += hsumm[i];
+            }
+            printf("Error [red6] : %f | [%f]\n\n",fabs(res-summ),res);
+        }
+        file.close();
+    }
 
 
 

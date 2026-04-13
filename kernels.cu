@@ -1,3 +1,4 @@
+#include <iostream>
 #include <cuda.h>
 
 #include "kernels.h"
@@ -199,4 +200,63 @@ template __global__ void gpuSUMReductionCompleteUnroll<256>(const float*, float*
 template __global__ void gpuSUMReductionCompleteUnroll<512>(const float*, float*, const int);
 
 
+template <const int blockSize>
+__global__ void gpuSUMReductionMultiAddPerThread(const float *dA, float *dsumm, const int N){
 
+    extern __shared__ float dAshared[];
+
+    const int tid = threadIdx.x;
+    int globalIdx = (2*blockDim.x) * blockIdx.x + tid;
+    const int gridSize = 2*blockDim.x * gridDim.x;
+
+    dAshared[tid] = 0.0f;
+    while (globalIdx < N){
+        dAshared[tid] += dA[globalIdx] + dA[globalIdx + blockSize]; 
+        // if (tid == 0 && blockIdx.x == 0) { printf("tid %d | globalIdx %d | grisize %d | gridDim.x %d | blockDim.x %d |\n",tid,globalIdx,gridSize,gridDim.x,blockDim.x); }
+	globalIdx += gridSize;
+    }
+    __syncthreads();
+
+    // manually doing loop unroll
+    if (blockSize >= 512){
+        if (tid < 256){
+            dAshared[tid] += dAshared[tid + 256];
+        }
+        __syncthreads();
+    }
+    if (blockSize >= 256){
+        if (tid < 128){
+            dAshared[tid] += dAshared[tid + 128];
+        }
+        __syncthreads();
+    }
+    if (blockSize >= 128){
+        if (tid < 64){
+            dAshared[tid] += dAshared[tid + 64];
+        }
+        __syncthreads();
+    }
+
+
+    if (tid < 32){
+       warpReduce<blockSize>(dAshared,tid);
+    }
+
+
+    if (tid == 0){
+        dsumm[blockIdx.x] = dAshared[0];
+    }
+
+}
+
+
+template __global__ void gpuSUMReductionMultiAddPerThread<16>(const float*, float*, const int);
+template __global__ void gpuSUMReductionMultiAddPerThread<32>(const float*, float*, const int);
+template __global__ void gpuSUMReductionMultiAddPerThread<64>(const float*, float*, const int);
+template __global__ void gpuSUMReductionMultiAddPerThread<128>(const float*, float*, const int);
+template __global__ void gpuSUMReductionMultiAddPerThread<256>(const float*, float*, const int);
+template __global__ void gpuSUMReductionMultiAddPerThread<512>(const float*, float*, const int);
+
+
+__global__ void gpuSUMReductionCustom(const float *dA, float *dsumm, const int N){
+}
