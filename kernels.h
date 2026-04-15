@@ -19,4 +19,9 @@ __global__ void gpuSUMReductionCompleteUnroll(const float*, float*, const int);
 template <const int blockSize>
 __global__ void gpuSUMReductionMultiAddPerThread(const float*, float*, const int);
 
+template <const int blockSize>
+//__global__ void gpuSUMReductionCustom1(const float *dA, float *dsumm, const int N);
+__global__ void gpuSUMReductionCustom1(const float *__restrict__ dA, float *__restrict__ dsumm, const int N);
+
+
 #endif

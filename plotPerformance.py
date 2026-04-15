@@ -152,7 +152,9 @@ def plotMultiAdd():
     for w,wpt in enumerate(WPT):
         data = np.loadtxt(f"KernelTimings/reduce6_N{input}_repeat25_NT{256}_WPT{wpt}.csv",delimiter=",")
         Ts[w] = np.mean(data[1:])
-    
+
+    print(Ts)
+
     colors = plt.cm.cool(np.linspace(0,1,len(WPT)))
     plt.figure(figsize=(9,5))
 
@@ -173,6 +175,45 @@ def plotMultiAdd():
     plt.savefig("compareMultiAdd.png",dpi=300)
     plt.close()
 
+def compareCust():
+    repeat = 100
+    input = 1000000
+    NTs = 256
+    WPT = 4
+
+    Kernels = ["reduce6","reduceC1","reduceC1up"]
+    KernelLabel = ["Multi\nAdd/Thread", "__shfl_down()", "__shfl_up()"]
+
+    Ts = np.zeros(len(Kernels))
+    for k,type in enumerate(Kernels):
+        data = np.loadtxt(f"KernelTimings/{type}_N{input}_repeat{repeat}_NT{NTs}_WPT{WPT}.csv",delimiter=",")
+        # Ts[k] = np.mean(data[1:])
+        Ts[k] = np.median(data[1:])
+
+    print(Ts)
+
+    colors = plt.cm.cool(np.linspace(0,1,len(Kernels)))
+    plt.figure(figsize=(5,5))
+
+    plt.bar(np.arange(len(Kernels)),Ts, width=1, ec="w", lw=3, color=colors,alpha=0.99)
+
+    for i in range(len(Kernels)):
+        plt.text(i,Ts[i]+1,f"{np.round(52.2/Ts[i],2)}x",fontsize=tickFontsize, ha="center")
+
+    plt.xlabel("KERNELS",fontsize=labelFontsize,labelpad=10)
+    plt.ylabel("t (microsecs)",fontsize=labelFontsize)
+
+    # plt.ylim([0,70])
+    plt.xticks(np.arange(len(Kernels)),KernelLabel)
+    plt.tick_params(axis="y",labelsize=tickFontsize)
+    plt.tick_params(axis="x",labelsize=tickFontsize)
+
+    plt.tight_layout()
+    plt.savefig("compareCustom.png",dpi=300)
+    plt.close()
+
+
+
 if __name__ == "__main__":
 
     # plot()
@@ -181,4 +222,6 @@ if __name__ == "__main__":
 
     # plotThreadLaunched()
 
-    plotMultiAdd()
+    # plotMultiAdd()
+
+    compareCust()

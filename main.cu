@@ -24,7 +24,7 @@ using namespace std;
 
 int main(){
     
-    const int repeat = 1;
+    const int repeat = 100;
     const int N = 1000000;
 
     const bool reduce0 = false ;
@@ -33,7 +33,10 @@ int main(){
     const bool reduce3 = false ;
     const bool reduce4 = false ;
     const bool reduce5 = false ;
-    const bool reduce6 = true ;
+    const bool reduce6 = false ;
+
+    const bool reduceC1 = true ;
+
 
     float *A = new float[N];
     fillRandomArray(A,N);
@@ -66,7 +69,7 @@ int main(){
 	    auto  end = std::chrono::steady_clock::now();
 
 	    std::chrono::duration<double, std::micro> Tspan = end - start;
-	    printf("Time taken [GPU reduction] ~ %f microsecs\n",Tspan.count());
+	    // printf("Time taken [GPU reduction] ~ %f microsecs\n",Tspan.count());
             file << Tspan.count() << ((r != repeat-1) ? "," : "");
 
             float hsumm[NB] = {0.0f};
@@ -76,7 +79,7 @@ int main(){
 	    for (int i = 0 ; i < NB ; i++){
 		res += hsumm[i];
 	    }
-	    printf("Error [red0] : %f | [%f]\n\n",fabs(res-summ),res);
+	    // printf("Error [red0] : %f | [%f]\n\n",fabs(res-summ),res);
         }
         file.close();
     }
@@ -99,7 +102,7 @@ int main(){
             auto  end = std::chrono::steady_clock::now();
 
             std::chrono::duration<double, std::micro> Tspan = end - start;
-            printf("Time taken [GPU wihtout divergence] ~ %f microsecs\n",Tspan.count());
+            // printf("Time taken [GPU wihtout divergence] ~ %f microsecs\n",Tspan.count());
             file << Tspan.count() << ((r != repeat-1) ? "," : "");
 
             float hsumm[NB] = {0.0f};
@@ -109,7 +112,7 @@ int main(){
             for (int i = 0 ; i < NB ; i++){
                 res += hsumm[i];
             }
-            printf("Error [red1] : %f | [%f]\n\n",fabs(res-summ),res);
+            // printf("Error [red1] : %f | [%f]\n\n",fabs(res-summ),res);
         }
         file.close();
     }
@@ -131,7 +134,7 @@ int main(){
             auto  end = std::chrono::steady_clock::now();
 
             std::chrono::duration<double, std::micro> Tspan = end - start;
-            printf("Time taken [Sqeuential Address] ~ %f microsecs\n",Tspan.count());
+            // printf("Time taken [Sqeuential Address] ~ %f microsecs\n",Tspan.count());
             file << Tspan.count() << ((r != repeat-1) ? "," : "");
 
             float hsumm[NB] = {0.0f};
@@ -141,7 +144,7 @@ int main(){
             for (int i = 0 ; i < NB ; i++){
                 res += hsumm[i];
             }
-            printf("Error [red2] : %f | [%f]\n\n",fabs(res-summ),res);
+            // printf("Error [red2] : %f | [%f]\n\n",fabs(res-summ),res);
         }
         file.close();
     }
@@ -163,7 +166,7 @@ int main(){
             auto  end = std::chrono::steady_clock::now();
 
             std::chrono::duration<double, std::micro> Tspan = end - start;
-            printf("Time taken [First Add] ~ %f microsecs\n",Tspan.count());
+            // printf("Time taken [First Add] ~ %f microsecs\n",Tspan.count());
             file << Tspan.count() << ((r != repeat-1) ? "," : "");
 
             float hsumm[NB] = {0.0f};
@@ -173,7 +176,7 @@ int main(){
             for (int i = 0 ; i < NB ; i++){
                 res += hsumm[i];
             }
-            printf("Error [red3] : %f | [%f]\n\n",fabs(res-summ),res);
+            // printf("Error [red3] : %f | [%f]\n\n",fabs(res-summ),res);
         }
         file.close();
     }
@@ -196,7 +199,7 @@ int main(){
             auto  end = std::chrono::steady_clock::now();
 
             std::chrono::duration<double, std::micro> Tspan = end - start;
-            printf("Time taken [Warp reduce] ~ %f microsecs\n",Tspan.count());
+            // printf("Time taken [Warp reduce] ~ %f microsecs\n",Tspan.count());
             file << Tspan.count() << ((r != repeat-1) ? "," : "");
 
             float hsumm[NB] = {0.0f};
@@ -206,7 +209,7 @@ int main(){
             for (int i = 0 ; i < NB ; i++){
                 res += hsumm[i];
             }
-            printf("Error [red4] : %f | [%f]\n\n",fabs(res-summ),res);
+            // printf("Error [red4] : %f | [%f]\n\n",fabs(res-summ),res);
         }
         file.close();
     }
@@ -229,7 +232,7 @@ int main(){
             auto  end = std::chrono::steady_clock::now();
 
             std::chrono::duration<double, std::micro> Tspan = end - start;
-            printf("Time taken [Complete unroll] ~ %f microsecs\n",Tspan.count());
+            // printf("Time taken [Complete unroll] ~ %f microsecs\n",Tspan.count());
             file << Tspan.count() << ((r != repeat-1) ? "," : "");
 
             float hsumm[NB] = {0.0f};
@@ -239,7 +242,7 @@ int main(){
             for (int i = 0 ; i < NB ; i++){
                 res += hsumm[i];
             }
-            printf("Error [red5] : %f | [%f]\n\n",fabs(res-summ),res);
+            // printf("Error [red5] : %f | [%f]\n\n",fabs(res-summ),res);
         }
         file.close();
     }
@@ -248,6 +251,7 @@ int main(){
     if (reduce6){
         // ofstream file("KernelTimings/reduce6_N"+to_string(N)+"_repeat"+to_string(repeat)+"_NT"+to_string(SM)+".csv");
         ofstream file("KernelTimings/reduce6_N"+to_string(N)+"_repeat"+to_string(repeat)+"_NT"+to_string(SM)+"_WPT"+to_string(WPT)+".csv");
+	float avg = 0.0f;
         for (int r = 0 ; r < repeat ; r++){
             const int NT = SM;
             const int NB = ((N + (2*NT) - 1)/(2*NT))/WPT;  // reducing the number of blocks launched
@@ -263,8 +267,10 @@ int main(){
             auto  end = std::chrono::steady_clock::now();
 
             std::chrono::duration<double, std::micro> Tspan = end - start;
-            printf("Time taken [Multi Add/Thread] ~ %f microsecs\n",Tspan.count());
+            // printf("Time taken [Multi Add/Thread] ~ %f microsecs\n",Tspan.count());
             file << Tspan.count() << ((r != repeat-1) ? "," : "");
+
+	    avg += r >= 1 ? Tspan.count() : 0.0f;
 
             float hsumm[NB] = {0.0f};
             cudaMemcpy(hsumm, dsumm, NB * sizeof(float), cudaMemcpyDeviceToHost); cudaFree(dsumm);
@@ -273,16 +279,54 @@ int main(){
             for (int i = 0 ; i < NB ; i++){
                 res += hsumm[i];
             }
-            printf("Error [red6] : %f | [%f]\n\n",fabs(res-summ),res);
+            // printf("Error [red6] : %f | [%f]\n\n",fabs(res-summ),res);
         }
         file.close();
+	printf("\nAverage time [Multi Add] [%f]\n",avg/((float)repeat-1));
+    }
+
+    if (reduceC1){
+        // ofstream file("KernelTimings/reduceC1_N"+to_string(N)+"_repeat"+to_string(repeat)+"_NT"+to_string(SM)+".csv");
+        ofstream file("KernelTimings/reduceC1_N"+to_string(N)+"_repeat"+to_string(repeat)+"_NT"+to_string(SM)+"_WPT"+to_string(WPT)+".csv");
+        // ofstream file("KernelTimings/reduceC1up_N"+to_string(N)+"_repeat"+to_string(repeat)+"_NT"+to_string(SM)+"_WPT"+to_string(WPT)+".csv");
+	float avg = 0.0f;
+        for (int r = 0 ; r < repeat ; r++){
+            const int NT = SM;
+            const int NB = ((N + (2*NT) - 1)/(2*NT))/WPT;  // reducing the number of blocks launched
+            // printf("NT %d | NB %d\n",NT,NB);
+
+            float *dsumm;
+            cudaMalloc((void**) &dsumm, NB * sizeof(float));
+            cudaMemset(dsumm, 0.0f, NB * sizeof(float));
+
+            auto start = std::chrono::steady_clock::now();
+            gpuSUMReductionCustom1<NT><<<NB,NT,NT*sizeof(float)>>>(dA,dsumm,N);
+            cudaDeviceSynchronize();
+            auto  end = std::chrono::steady_clock::now();
+
+            std::chrono::duration<double, std::micro> Tspan = end - start;
+            // printf("Time taken [Custom1] ~ %f microsecs\n",Tspan.count());
+            file << Tspan.count() << ((r != repeat-1) ? "," : "");
+
+	    avg += r >= 1 ? Tspan.count() : 0.0f;
+
+            float hsumm[NB] = {0.0f};
+            cudaMemcpy(hsumm, dsumm, NB * sizeof(float), cudaMemcpyDeviceToHost); cudaFree(dsumm);
+
+            float res = 0.0f;
+            for (int i = 0 ; i < NB ; i++){
+                res += hsumm[i];
+            }
+            printf("Error [redC1] : %f | [%f]\n\n",fabs(res-summ),res);
+        }
+        file.close();
+        printf("\nAverage time [custom1] [%f]\n",avg/((float)repeat-1));
     }
 
 
 
 
-
-
+    
     delete[] A;
     cudaFree(dA);
 
